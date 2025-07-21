@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="../favicon.svg" type="image/x-icon">
+    <title>Verdad o Reto</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --purple: #8157ff;
+            --pink: #ff0052;
+            --black: #131313;
+            --gray: #333;
+            --light: #ccc;
+        }
+        *, *::before, *::after {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: var(--black);
+            background: #ebe8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 832px;
+            padding-inline: 16px;
+            text-align: center;
+            margin: 48px auto 0;
+        }
+        header {
+            font-weight: bolder;
+            & h1 {
+                font-size: 3.25em;
+                margin: 0;
+                & span:first-child {
+                    color: var(--purple);
+                }
+                & span:last-child {
+                    color: var(--pink);
+                }
+            }
+            & h5 {
+                margin: 0;
+            }
+        }
+        #finish-btn {
+            background: var(--gray);
+            &:hover {
+                background: var(--black);
+            }
+        }
+        #truth-btn {
+            width: 120px;
+            background: var(--purple);
+            &:hover {
+                background: var(--black);
+            } 
+        }
+        #dare-btn {
+            width: 120px;
+            background: var(--pink);
+            &:hover {
+                background: var(--black);
+            }
+        }
+        #truth-btn.locked, #dare-btn.locked {
+            position: relative;
+            cursor: not-allowed;
+            background: var(--light);
+        }
+        .locked::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--purple);
+            z-index: 1;
+            animation: unlock 3s linear forwards;
+        }
+        #dare-btn.locked::after {
+            background: var(--pink);
+        }
+        @keyframes unlock {
+            0% {
+                width: 0%; 
+            }
+            100% {
+                width: 100%;
+            }
+        }
+
+        button {
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: var(--pink);
+            color: white;
+            font-weight: bold;
+            margin-top: 20px;
+            padding: 8px 20px;
+            border-radius: 22.5px;
+            overflow: hidden;
+            &:hover {
+                background: var(--black);
+            }
+            & span {
+                position: relative;
+                z-index: 2;
+            }
+        }
+
+        section {
+            margin-top: 50px;
+            font-size: 1.5em;
+            display: none;
+            visibility: hidden;
+            &.visible {
+                display: block;
+                visibility: visible;
+            }
+        }
+        footer {
+            position: fixed;
+            bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><span>Verdad</span> o <span>Reto</span></h1>
+        <h5>Una versión para parejas del famoso juego homónimo</h5>
+    </header>
+    <main>
+        <section id="data" class="visible">
+            <!--TODO: Añadir instrucciones como: estar solos, tener snacks, una pizarra o papel y un plumón o lapicero-->
+            <div>
+                <h2>Jugador 1:</h2>
+                <span id="name1" contenteditable="true">NombreJ1</span>
+            </div>
+            <div>
+                <h2>Jugador 2:</h2>
+                <span id="name2" contenteditable="true">NombreJ2</span>
+            </div>
+            <button id="start-btn">
+                Iniciar juego
+            </button>
+        </section>
+        <section id="questions">
+            <h2 id="title">Pregunta categoría</h2>
+            <h2 id="content">¿Cuál es la pregunta que aparecerá?</h2>
+            <div id="buttons">
+                <div>
+                    <button id="truth-btn"><span>Verdad</span></button>
+                    <button id="dare-btn"><span>Reto</span></button>
+                </div>
+                <button id="finish-btn">Terminar juego</button>
+            </div>
+
+        </section>
+        <section id="results">
+            <h2>Gracias por jugar espero lo hayan disfrutado</h2>
+            <p>NombreJ1 y NombreJ2</p>
+            <button id="restart-btn">Volver a jugar</button>
+        </section>
+    </main>
+    <footer><small>Hecho con cariño por TekMos ❤️</small></footer>
+</body>
+
+<script type="module">
+    import {preguntas as preguntas} from './data.js'
+    import {retos as retos} from './data.js'
+    const $ = el => document.querySelector(el)
+
+    const $data = $('#data')
+    const $questions = $('#questions')
+    const $results = $('#results')
+    const $startBtn = $('#start-btn')
+    const $finishBtn = $('#finish-btn')
+    const $truthBtn = $('#truth-btn')
+    const $dareBtn = $('#dare-btn')
+    const $restartBtn = $('#restart-btn')
+    const $name1 = $('#name1')
+    const $name2 = $('#name2')
+    const $title = $('#title')
+    const $content = $('#content')
+
+    // Se almacenan los índices ya usados
+    let preguntasMost = []
+    let retosMost = []
+
+    initEvents()
+
+    function initEvents() {
+        $startBtn.addEventListener('click', startGame)
+        $finishBtn.addEventListener('click', finishGame)
+        $restartBtn.addEventListener('click', restartGame)
+        $finishBtn.addEventListener('click', finishGame)
+        $truthBtn.addEventListener('click', newTruth)
+        $dareBtn.addEventListener('click', newDare)
+    }
+
+    function startGame() {
+        $data.classList.remove('visible')
+        $questions.classList.add('visible')
+
+        const name1 = $name1.textContent
+        const name2 = $name2.textContent
+        console.log({na1: name1, na2: name2})
+        
+        newTruth()
+    }
+    function finishGame(){
+        $questions.classList.remove('visible')
+        $results.classList.add('visible')
+
+        const name1 = $name1.textContent
+        const name2 = $name2.textContent
+
+        const $p = $results.querySelector('p')
+        $p.textContent = `${name1} y ${name2}`
+    }
+    function restartGame() {
+        $results.classList.remove('visible')
+        $data.classList.add('visible')
+
+        $name1.textContent = 'NombreJ1'
+        $name2.textContent = 'NombreJ2'
+
+        newTruth()
+    }
+    function newTruth() {
+        if(preguntasMost.length === preguntas.length) {
+            $content.textContent = 'Se han mostrado todas las preguntas 🥺'
+            return
+        }
+
+        // Cambia el índice hasta obtener uno nuevo
+        let index
+        do {
+            index = Math.floor(Math.random() * preguntas.length)
+        } while(preguntasMost.includes(index))
+
+        preguntasMost.push(index)
+        const preg = preguntas[index]
+        
+        $title.textContent = `Pregunta ${preg.categoria}`
+        $content.textContent = preg.texto
+
+        unableButtons()
+    }
+
+    function newDare() {
+        if(retosMost.length === retos.length) {
+            $content.textContent = 'Se han mostrado todos los retos 🥺'
+            return
+        }
+
+        let index
+        do {
+            index = Math.floor(Math.random() * retos.length)
+        } while(retosMost.includes(index))
+
+        retosMost.push(index)
+        const ret = retos[index]
+
+        $title.textContent = `Retos ${ret.categoria}`
+        $content.textContent = ret.texto
+
+        unableButtons()
+    }
+
+    function unableButtons() {
+        $dareBtn.disabled = true
+        $truthBtn.disabled = true
+        $finishBtn.disabled = true
+        $truthBtn.classList.add('locked')
+        $dareBtn.classList.add('locked')
+
+        setTimeout(() => {
+            $dareBtn.disabled = false
+            $truthBtn.disabled = false
+            $finishBtn.disabled = false
+            $dareBtn.classList.remove('locked')
+            $truthBtn.classList.remove('locked')
+        }, 3000) // Activar después de 3 segundos
+    }
+</script>
+</html>
